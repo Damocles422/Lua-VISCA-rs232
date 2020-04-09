@@ -1,0 +1,594 @@
+-- button.wlua
+require "CLRPackage"
+require "CLRForm"
+require("wx")
+import "System.Windows.Forms"
+import "System.Drawing"
+package.searchpath = ";.\?.dll;.\?.so;..\lib\?.so;..\lib\vc_dll\?.dll;..\lib\bcc_dll\?.dll;..\lib\mingw_dll\?.dll;"
+
+--package.cpath = package.cpath..";./?.dll;./?.so;../lib/?.so;../lib/vc_dll/?.dll;../lib/bcc_dll/?.dll;../lib/mingw_dll/?.dll;"
+--require("wx")
+
+rs232 = require "luars232"
+
+form = Form()
+form.Text = "Send Commands to Sony Camera"
+form.Size = Size(830,130)
+panel = TableLayoutPanel()
+panel.RowCount = 3
+panel.ColumnCount = 10
+
+--ACK "Z0,41,ff"  Complete " z0, 51, ff"  Z=Cam +8   Address  "88,30,01,ff" IfClear "88 01 00 01 FF"
+
+Cam1AE_Full = [[\x81\x01\x04\x39\x00\xFF]] --broadcast 8x 01 04 39 00 FF
+Cam1AE_Full=Cam1AE_Full:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam2AE_Full = [[\x82\x01\x04\x39\x00\xFF]] --broadcast 8x 01 04 39 00 FF
+Cam2AE_Full=Cam2AE_Full:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam1AE_Shutter = [[\x81\x01\x04\x39\x0a\xFF]] --broadcast 8x 01 04 39 0a FF
+Cam1AE_Shutter=Cam1AE_Shutter:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam2AE_Shutter = [[\x82\x01\x04\x39\x0a\xFF]] --broadcast 8x 01 04 39 0a FF
+Cam2AE_Shutter=Cam2AE_Shutter:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam1AE_Iris = [[\x81\x01\x04\x39\x0b\xFF]] --broadcast 8x 01 04 39 0b FF
+Cam1AE_Iris=Cam1AE_Iris:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam2AE_Iris = [[\x82\x01\x04\x39\x0b\xFF]] --broadcast 8x 01 04 39 0b FF
+Cam2AE_Iris=Cam2AE_Iris:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam1_Indoor = [[\x81\x01\x04\x35\x01\xFF]] --broadcast 8x 01 04 35 01 FF
+Cam1_Indoor=Cam1_Indoor:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam2_Indoor = [[\x82\x01\x04\x35\x01\xFF]] --broadcast 8x 01 04 35 01 FF
+Cam2_Indoor=Cam2_Indoor:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam1_ATW = [[\x81\x01\x04\x35\x04\xFF]] --broadcast 8x 01 04 35 04 FF
+Cam1_ATW=Cam1_ATW:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam2_ATW = [[\x82\x01\x04\x35\x04\xFF]] --broadcast 8x 01 04 35 04 FF
+Cam2_ATW=Cam2_ATW:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam1_Trigger = [[\x81\x01\x04\x10\x05\xFF]] --broadcast 8x 01 04 10 05 FF
+Cam1_Trigger=Cam1_Trigger:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam2_Trigger = [[\x82\x01\x04\x10\x05\xFF]] --broadcast 8x 01 04 10 05 FF
+Cam2_Trigger=Cam2_Trigger:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam1_Gain = [[\x81\x01\x04\x39\x0c\xFF]] --broadcast 8x 01 04 39 0c FF
+Cam1_Gain=Cam1_Gain:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam2_Gain = [[\x82\x01\x04\x39\x0c\xFF]] --broadcast 8x 01 04 39 0c FF
+Cam2_Gain=Cam2_Gain:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+
+Cam1_Focus = [[\x81\x01\x04\x18\x01\xFF]] --broadcast 8x 01 04 18 01 FF
+Cam1_Focus=Cam1_Focus:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+Cam2_Focus = [[\x82\x01\x04\x18\x01\xFF]] --broadcast 8x 01 04 18 01 FF
+Cam2_Focus=Cam2_Focus:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+
+--command_once()
+
+Cam1Switch = io.stdout:write "F6"  --Press F6
+Cam2Switch = io.stdout:write "F7"   --Press F7
+Cam12Switch = io.stdout:write "F8"  --Press F8
+PowerPointSwitch = io.stdout:write "F9"  --Press F9
+TeamVieverSwitch = io.stdout:write "F10"   --Press F10
+VLC_Video_Switch =io.stdout:write "F11" --Press F11
+Credit_Switch = io.stdout:write "F12"  --Press F12
+
+if_Clear = [[\x88\x01\x00\x01\xFF]] --broadcast 88:01:00:01:FF
+if_Clear=if_Clear:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+-----------------------------------------------------------------
+	port_name = "COM1"
+	local out = io.stderr
+ --open port
+	local e, p = rs232.open(port_name)
+		if e ~= rs232.RS232_ERR_NOERROR then
+			-- handle error
+		out:write(string.format("can't open serial port '%s', error: '%s'\n",
+			port_name, rs232.error_tostring(e)))
+		return
+	end
+
+		-- set port settings
+	assert(p:set_baud_rate(rs232.RS232_BAUD_9600) == rs232.RS232_ERR_NOERROR)
+	assert(p:set_data_bits(rs232.RS232_DATA_8) == rs232.RS232_ERR_NOERROR)
+	assert(p:set_parity(rs232.RS232_PARITY_NONE) == rs232.RS232_ERR_NOERROR)
+	assert(p:set_stop_bits(rs232.RS232_STOP_1) == rs232.RS232_ERR_NOERROR)
+	assert(p:set_flow_control(rs232.RS232_FLOW_OFF)  == rs232.RS232_ERR_NOERROR)
+	local timeout = 250  --in Miliseconds
+
+-----------------------------------------------------------------------
+
+ function button(text, callback)
+	b = Button()
+	b.Text = text
+	panel.Controls:Add(b)
+	return (b)
+end
+
+b1 = button "1_Wide"
+b2 = button "1_Right"
+b3 = button "1_Center"
+b4 = button "1_Left"
+b5 = button "1_Left_Floor"
+b6 = button "Audience"
+b7 = button "Mayor"  --Welch
+b8 = button "Finance"--Nelson
+b9 = button "Attorney"  --Schroeder
+b10 = button "Public Works" --Robinson
+
+b11 = button "2_Wide"
+b12 = button "Lecturn"
+b13 = button "2_Right_Floor"
+b14 = button "2_Right"
+b15 = button "2_Center"
+b16 = button "2_Left"
+b17 = button "Admin."  --Hulick
+b18 = button "Police Chief" --Marquardt
+b19 = button "Fire Chief"  --Banker
+b20 = button "Library"  --Kunkel
+
+b21 = button "AutoExposure"
+b22 = button "Shutter"
+b23 = button "Iris"
+b24 = button "Indoor"
+b25 = button "ATW"
+b26 = button "Trigger"
+b27 = button "Gain"
+b28 = button "Computer"
+b29 = button "Cam1 Focus"
+b30 = button "Cam2 Focus"
+
+panel:SetRow(b1,0); panel:SetColumn(b1,0)
+panel:SetRow(b6,0); panel:SetColumn(b6,1)
+panel:SetRow(b2,0); panel:SetColumn(b2,2)
+panel:SetRow(b3,0); panel:SetColumn(b3,3)
+panel:SetRow(b4,0); panel:SetColumn(b4,4)
+panel:SetRow(b5,0); panel:SetColumn(b5,5)
+panel:SetRow(b7,0); panel:SetColumn(b7,6)
+panel:SetRow(b8,0); panel:SetColumn(b8,7)
+panel:SetRow(b9,0); panel:SetColumn(b9,8)
+panel:SetRow(b10,0); panel:SetColumn(b10,9)
+
+panel:SetRow(b11,1); panel:SetColumn(b11,0)
+panel:SetRow(b13,1); panel:SetColumn(b13,1)
+panel:SetRow(b14,1); panel:SetColumn(b14,2)
+panel:SetRow(b15,1); panel:SetColumn(b15,3)
+panel:SetRow(b16,1); panel:SetColumn(b16,4)
+panel:SetRow(b12,1); panel:SetColumn(b12,5)
+panel:SetRow(b20,1); panel:SetColumn(b20,7)
+panel:SetRow(b17,1); panel:SetColumn(b17,6)
+panel:SetRow(b18,1); panel:SetColumn(b18,8)
+panel:SetRow(b19,1); panel:SetColumn(b19,9)
+
+panel:SetRow(b21,2); panel:SetColumn(b21,0)
+panel:SetRow(b22,2); panel:SetColumn(b22,1)
+panel:SetRow(b23,2); panel:SetColumn(b23,2)
+panel:SetRow(b24,2); panel:SetColumn(b24,3)
+panel:SetRow(b25,2); panel:SetColumn(b25,4)
+panel:SetRow(b26,2); panel:SetColumn(b26,5)
+panel:SetRow(b27,2); panel:SetColumn(b27,7)
+panel:SetRow(b28,2); panel:SetColumn(b28,6)
+panel:SetRow(b29,2); panel:SetColumn(b29,8)
+panel:SetRow(b30,2); panel:SetColumn(b30,9)
+
+
+local b1_1 = [[\x81\x01\x04\x3F\x02\x00\xFF]] -- 81 1 4 3f 2 0 ff
+local b1_1=b1_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam1_pre1
+b1.Click:Add(function()
+	p:write(b1_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b2_1 = [[\x81\x01\x04\x3F\x02\x01\xFF]] -- 81 1 4 3f 2 1 ff
+local b2_1=b2_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam1_pre2
+b2.Click:Add(function()
+	p:write (b2_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b3_1 = [[\x81\x01\x04\x3F\x02\x02\xFF]] -- 81 1 4 3f 2 2 ff
+local b3_1=b3_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam1_pre3
+b3.Click:Add(function()
+	p:write (b3_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b4_1 = [[\x81\x01\x04\x3F\x02\x03\xFF]] -- 81 1 4 3f 2 3 ff
+local b4_1=b4_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam1_pre4
+b4.Click:Add(function()
+	p:write (b4_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b5_1 = [[\x81\x01\x04\x3F\x02\x04\xFF]] -- 81 1 4 3f 2 4 ff
+local b5_1=b5_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam1_Pre5
+b5.Click:Add(function()
+	p:write (b5_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b6_1 = [[\x81\x01\x04\x3F\x02\x05\xFF]] -- 81 1 4 3f 2 5 ff
+local b6_1=b6_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam1_Pre6
+b6.Click:Add(function()
+	p:write (b6_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b7_1 = [[\x81\x01\x06\x02\x18\x14\x0f\x0c\x02\x0f\x0f\x0f\x0d\x04\xFF]]
+			   -- 8x  01  06  02  VV  WW  0Y  0Y  0Y  0Y  0Z  0Z  0Z  0Z  FF Absolute Pan tilt
+local b7_1=b7_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b7_2 = [[\x81\x01\x04\x47\x04\x00\x00\x00\xff]]
+			   -- 8x  01  04  47  0p  0q  0r  0s  FF  Zoom
+local b7_2=b7_2:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b7_3 = [[\x81\x01\x04\x48\x01\x07\x07\x00\xff]]
+			   -- 8x  01  04  48  0s  0t  0u  0v  0w  FF  Focus
+local b7_3=b7_3:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	-- Mayor
+b7.Click:Add(function()
+	p:write (b7_1)
+	wx.wxMilliSleep(150)
+	p:write (b7_2)
+	wx.wxMilliSleep(400)
+	p:write (b7_3)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b8_1 = [[\x81\x01\x06\x02\x18\x14\x0f\x0d\x06\x0f\x0f\x0f\x0d\x04\xFF]]
+			   -- 8x  01  06  02  VV  WW  0Y  0Y  0Y  0Y  0Z  0Z  0Z  0Z  FF Absolute Pan tilt
+local b8_1=b8_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b8_2 = [[\x81\x01\x04\x47\x04\x00\x00\x00\xff]]
+			   -- 8x  01  04  47  0p  0q  0r  0s  FF  Zoom Focus
+local b8_2=b8_2:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b8_3 = [[\x81\x01\x04\x48\x01\x07\x06\x05\xff]]
+			   -- 8x  01  04  48  0s  0t  0u  0v  0w  FF  Focus
+local b8_3=b8_3:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Finance
+b8.Click:Add(function()
+	p:write (b8_1)
+	wx.wxMilliSleep(150)
+	p:write (b8_2)
+	wx.wxMilliSleep(400)
+	p:write (b8_3)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b9_1 = [[\x81\x01\x06\x02\x18\x14\x0f\x0d\x0a\x04\x0f\x0f\x0c\x0f\xFF]]
+			   -- 8x  01  06  02  VV  WW  0Y  0Y  0Y  0Y  0Z  0Z  0Z  0Z  FF Absolute Pan tilt
+local b9_1=b9_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b9_2 = [[\x81\x01\x04\x47\x04\x00\x00\x00\xff]]
+			   -- 8x  01  04  47  0p  0q  0r  0s  FF  Zoom Focus
+local b9_2=b9_2:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b9_3 = [[\x81\x01\x04\x48\x01\x07\x06\x05\xff]]
+			   -- 8x  01  04  48  0s  0t  0u  0v  0w  FF  Focus
+local b9_3=b9_3:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+
+	--Attorney
+b9.Click:Add(function()
+	p:write (b9_1)
+	wx.wxMilliSleep(150)
+	p:write (b9_2)
+	wx.wxMilliSleep(400)
+	p:write (b9_3)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b10_1 = [[\x81\x01\x06\x02\x18\x14\x0f\x0d\x0d\x0c\x0f\x0f\x0c\x07\xFF]]
+			   -- 8x  01  06  02  VV  WW   0Y  0Y  0Y  0Y  0Z  0Z  0Z  0Z  FF Absolute Pan tilt
+local b10_1=b10_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b10_2 = [[\x81\x01\x04\x47\x04\x00\x00\x00\xff]]
+			   -- 8x  01  04  47  0p  0q   0r  0s  FF  Zoom Focus
+local b10_2=b10_2:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b10_3 = [[\x81\x01\x04\x48\x01\x07\x06\x05\xff]]
+			   -- 8x  01  04  48  0s  0t  0u  0v  0w  FF  Focus
+local b10_3=b10_3:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Public
+b10.Click:Add(function()
+	p:write (b10_1)
+	wx.wxMilliSleep(150)
+	p:write (b10_2)
+	wx.wxMilliSleep(400)
+	p:write (b10_3)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam1Switch()
+	end)
+
+local b11_1 = [[\x82\x01\x04\x3F\x02\x00\xFF]] -- 82 01 04 3F 02 0 FF
+local b11_1=b11_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam2_Pre1
+b11.Click:Add(function()
+	p:write (b11_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b12_1 = [[\x82\x01\x04\x3f\x02\x01\xFF]] -- 82 1 4 3f 2 1 ff
+local b12_1=b12_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam2_Pre2
+b12.Click:Add(function()
+	p:write (b12_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b13_1 = [[\x82\x01\x04\x3f\x02\x02\xFF]] -- 82 1 4 3f 2 2 ff
+local b13_1=b13_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam2_Pre2 3
+b13.Click:Add(function()
+	p:write (b13_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b14_1 = [[\x82\x01\x04\x3f\x02\x03\xFF]] -- 82 1 4 3f 2 3 ff
+local b14_1=b14_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam2_Pre4
+b14.Click:Add(function()
+	p:write (b14_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b15_1 = [[\x82\x01\x04\x3f\x02\x04\xFF]] -- 82 1 4 3f 2 4 ff
+local b15_1=b15_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam2_Pre5
+b15.Click:Add(function()
+	p:write (b15_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b16_1 = [[\x82\x01\x04\x3f\x02\x05\xFF]] -- 82 1 4 3f 2 5 ff
+local b16_1=b16_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Cam2_Pre6
+b16.Click:Add(function()
+	p:write (b16_1)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b17_1 = [[\x82\x01\x06\x02\x18\x14\x00\x03\x04\x00\x0f\x0f\x0a\x0f\xFF]]
+			   -- 8x  01  06  02  VV  WW   0Y  0Y  0Y  0Y  0Z  0Z  0Z  0Z  FF Absolute Pan tilt
+local b17_1=b17_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b17_2 = [[\x82\x01\x04\x47\x04\x00\x00\x00\xff]]
+			   -- 8x  01  04  47  0p  0q  0r  0s   FF  Zoom
+local b17_2=b17_2:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b17_3 = [[\x82\x01\x04\x48\x01\x07\x06\x05\xff]]
+			   -- 8x  01  04  48  0s  0t  0u  0v  0w  FF  Focus
+local b17_3=b17_3:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	-- Admin
+b17.Click:Add(function()
+	p:write (b17_1)
+	wx.wxMilliSleep(150)
+	p:write (b17_2)
+	wx.wxMilliSleep(400)
+	p:write (b17_3)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b18_1 = [[\x82\x01\x06\x02\x18\x14\x00\x01\x03\x07\x0f\x0f\x09\x07\xFF]]
+			   -- 8x  01  06  02  VV  WW  0Y  0Y  0Y  0Y  0Z  0Z  0Z  0Z  FF Absolute Pan tilt
+local b18_1=b18_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b18_2 = [[\x82\x01\x04\x47\x04\x00\x00\x00\xff]]
+			   -- 8x  01  04  47  0p  0q  0r  0s   FF  Zoom
+local b18_2=b18_2:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b18_3 = [[\x82\x01\x04\x48\x01\x07\x06\x05\xff]]
+			   -- 8x  01  04  48  0s  0t  0u  0v  0w  FF  Focus
+local b18_3=b18_3:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Police
+b18.Click:Add(function()
+	p:write(b18_1)
+	wx.wxMilliSleep(150)
+	p:write(b18_2)
+	wx.wxMilliSleep(400)
+	p:write (b18_3)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b19_1 = [[\x82\x01\x06\x02\x18\x14\x00\x00\x0f\x07\x0f\x0f\x09\x00\xFF]]
+			   -- 8x  01  06  02  VV  WW  0Y  0Y  0Y  0Y  0Z  0Z  0Z  0Z  FF Absolute Pan tilt
+local b19_1=b19_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b19_2 = [[\x82\x01\x04\x47\x04\x00\x00\x00\xff]]
+			   -- 8x  01  04  47  0p  0q  0r  0s   FF  Zoom
+local b19_2=b19_2:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b19_3 = [[\x82\x01\x04\x48\x01\x07\x06\x05\xff]]
+			   -- 8x  01  04  48  0s  0t  0u  0v  0w  FF  Focus
+local b19_3=b19_3:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Fire
+b19.Click:Add(function()
+	p:write (b19_1)
+	wx.wxMilliSleep(150)
+	p:write (b19_2)
+	wx.wxMilliSleep(400)
+	p:write (b19_3)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+local b20_1 = [[\x82\x01\x06\x02\x18\x14\x00\x01\x06\x07\x0f\x0f\x09\x05\xFF]]
+				-- 8x  01  06  02  VV  WW  0Y  0Y  0Y  0Y  0Z  0Z  0Z  0Z  FF Absolute Pan tilt
+local b20_1=b20_1:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b20_2 = [[\x82\x01\x04\x47\x04\x00\x00\x00\xff]]
+				-- 8x  01  04  47  0p  0q  0r  0s  FF  Zoom
+local b20_2=b20_2:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+local b20_3 = [[\x82\x01\x04\x48\x01\x07\x06\x05\xff]]
+			   -- 8x  01  04  48  0s  0t  0u  0v  0w  FF  Focus
+local b20_3=b20_3:gsub("\\x(%x%x)",function (x) return string.char(tonumber(x,16))end)
+
+	--Library
+b20.Click:Add(function()
+	p:write (b20_1)
+	wx.wxMilliSleep(250)
+	p:write (b20_2)
+	wx.wxMilliSleep(400)
+	p:write (b20_3)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+	--AutoExposure
+b21.Click:Add(function()
+	p:write (Cam1AE_Full)
+	p:write (Cam2AE_Full)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+	--Shutter
+b22.Click:Add(function()
+	p:write (Cam1AE_Shutter)
+	p:write (Cam2AE_Shutter)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+	--Iris
+b23.Click:Add(function()
+	p:write (Cam1AE_Iris)
+	p:write (Cam2AE_Iris)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+	--Indoor
+b24.Click:Add(function()
+	p:write (Cam1_Indoor)
+	p:write (Cam2_Indoor)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+	--ATW mode
+b25.Click:Add(function()
+	p:write (Cam1_ATW)
+	p:write (Cam2_ATW)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+	--ATW Trigger
+b26.Click:Add(function()
+	p:write (Cam1_Trigger)
+	p:write (Cam2_Trigger)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+	--Gain Priority
+b27.Click:Add(function()
+	p:write (Cam1_Gain)
+	p:write (Cam2_Gain)
+	p:flush()
+	wx.wxMilliSleep(400)
+	Cam2Switch()
+	end)
+
+b28.Click:Add(function()
+	TeamVieverSwitch()
+	end)
+
+	--Camera 1 Focus
+b29.Click:Add(function()
+	p:write (Cam1_Focus)
+	p:flush()
+	end)
+
+	--Camera 2 Focus
+b30.Click:Add(function()
+	p:write (Cam2_Focus)
+	p:flush()
+	wx.wxMilliSleep(400)
+	end)
+
+panel.Dock = DockStyle.Fill
+form.Controls:Add(panel)
+form:ShowDialog()
+
+	assert(e == rs232.RS232_ERR_NOERROR)
+	assert(p:close() == rs232.RS232_ERR_NOERROR)
+
+return
